@@ -1,71 +1,23 @@
-import { defineConfig, devices } from '@playwright/test';
+<script lang="ts">
+  import ogImage from '$lib/assets/og_image.jpg';
+  import type { Snippet } from 'svelte';
+  import '../app.css';
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// require('dotenv').config();
+  let { children }: { children: Snippet } = $props();
+</script>
 
-/**
- * See https://playwright.dev/docs/test-configuration.
- */
-export default defineConfig({
-  testDir: './tests',
-  /* Run tests in files in parallel */
-  fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  use: {
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
-    video: 'retain-on-failure',
-  },
+<svelte:head>
+  <title>Plinko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap"
+    rel="stylesheet"
+  />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Plinko" />
+  <meta property="og:url" content="https://plinko-web-game.netlify.app/" />
+  <meta property="og:image" content={ogImage} />
+</svelte:head>
 
-  /* Configure projects for major browsers */
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
-  ],
-
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'pnpm preview', // Please run `pnpm build` before running E2E tests
-    port: 4173,
-    reuseExistingServer: !process.env.CI,
-  },
-});
+{@render children?.()}
