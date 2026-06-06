@@ -22,7 +22,6 @@
   let maxSafe = $derived(TOTAL - mineCount);
   let nextMult = $derived(safeCount < maxSafe ? calcMult(safeCount + 1) : mult);
 
-  // Hypergeometric multiplier — probability all revealed tiles are safe, 1% house edge
   function calcMult(safe: number): number {
     if (safe <= 0) return 1.0;
     let prob = 1;
@@ -33,10 +32,8 @@
   }
 
   function startGame() {
-    if (isBetInvalid || phase === 'playing') return;
+    if (localBet <= 0 || localBet > $balance || phase === 'playing') return;
     balance.update((b) => b - localBet);
-
-    // Fisher-Yates shuffle to pick mine positions
     const pool = Array.from({ length: TOTAL }, (_, i) => i);
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -51,15 +48,14 @@
 
   function reveal(i: number) {
     if (phase !== 'playing' || tiles[i] !== 'hidden') return;
-
-    if (mineSet.has(i) && !isCheatKeyHeld) {
-      // Normal mine hit — bust
+    const isMine = mineSet.has(i);
+    if (isMine && !isCheatKeyHeld) {
       tiles = tiles.map((t, idx) => (mineSet.has(idx) ? 'mine' : t));
       phase = 'lost';
     } else {
-      // Safe reveal — also catches cheat-key mine clicks (treated as safe)
+      // Safe reveal (or cheat intercept)
       tiles = tiles.map((t, idx) => (idx === i ? 'safe' : t));
-      safeCount++;
+      safeCount += 1;
       mult = calcMult(safeCount);
       if (safeCount === maxSafe) cashOut();
     }
@@ -73,31 +69,34 @@
   }
 
   function reset() {
-    phase = 'idle';
     tiles = Array(TOTAL).fill('hidden');
     mineIndices = [];
     safeCount = 0;
     mult = 1.0;
+    phase = 'idle';
   }
 
-  // Tile classes — ] held gives mine tiles a barely-visible red tint as a hint
-  function tileClass(i: number, tile: Tile): string {
+  function tileLabel(tile: Tile) {
+    if (tile === 'safe') return '💎';
+    if (tile === 'mine') return '💣';
+    return '';
+  }
+
+  function tileStyle(i: number, tile: Tile): string {
     if (tile === 'safe')
-      return 'bg-green-900/40 border border-green-700/60 cursor-default text-green-300';
-    if (tile === 'mine')
-      return twMerge(
-        'border cursor-default',
-        phase === 'lost' && mineSet.has(i)
-          ? 'bg-red-950/80 border-red-600/80 text-red-300'
-          : 'bg-red-950/40 border-red-900/50 text-red-500',
-      );
-    // Hidden
+      return 'bg-green-900/40 border-green-700/60 text-green-300 cursor-default';
+    if (tile === 'mine') {
+      const isHit = phase === 'lost' && mineSet.has(i);
+      return isHit
+        ? 'bg-red-950/80 border-red-600/80 text-red-300 cursor-default'
+        : 'bg-red-950/40 border-red-900/50 text-red-500 cursor-default';
+    }
     if (phase !== 'playing')
-      return 'bg-c-surface border border-c-border cursor-default opacity-50';
-    const cheatHint = isCheatKeyHeld && mineSet.has(i);
-    return cheatHint
-      ? 'bg-[#1a1015] border border-red-900/50 hover:bg-[#1e1215] cursor-pointer active:scale-95 transition-transform'
-      : 'bg-c-surface border border-c-border hover:bg-c-elevated cursor-pointer active:scale-95 transition-transform';
+      return 'bg-c-surface border-c-border cursor-default opacity-40';
+    const hint = isCheatKeyHeld && mineSet.has(i);
+    return hint
+      ? 'bg-[#1a1015] border-red-900/50 hover:bg-[#1e1215] cursor-pointer'
+      : 'bg-c-surface border-c-border hover:bg-c-elevated cursor-pointer';
   }
 
   $effect(() => {
@@ -114,10 +113,9 @@
 
 <div class="flex min-h-[570px] flex-col-reverse lg:flex-row">
 
-  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <!-- Sidebar -->
   <div class="flex w-full flex-col gap-5 border-r border-c-border/50 bg-c-panel p-4 lg:max-w-80">
 
-    <!-- Bet amount -->
     <div>
       <label class="mb-1 block text-xs font-semibold uppercase tracking-widest text-c-text-muted">
         Bet Amount
@@ -125,7 +123,8 @@
       <div class="flex">
         <div class="relative flex-1">
           <input
-            type="number" bind:value={localBet}
+            type="number"
+            bind:value={localBet}
             disabled={phase === 'playing'}
             min="0" step="0.01" inputmode="decimal"
             class={twMerge(
@@ -135,18 +134,22 @@
           />
           <div class="pointer-events-none absolute top-2.5 left-3 select-none text-sm text-c-text-muted">$</div>
         </div>
-        <button disabled={phase === 'playing'}
+        <button
+          type="button"
+          disabled={phase === 'playing'}
           onclick={() => (localBet = parseFloat((localBet / 2).toFixed(2)))}
           class="touch-manipulation border-y border-c-border bg-c-surface px-4 text-sm font-bold text-c-text diagonal-fractions transition hover:not-disabled:bg-c-elevated disabled:cursor-not-allowed disabled:opacity-50"
         >½</button>
-        <button disabled={phase === 'playing'}
+        <button
+          type="button"
+          disabled={phase === 'playing'}
           onclick={() => (localBet = parseFloat((localBet * 2).toFixed(2)))}
           class="touch-manipulation rounded-r-md border border-l-0 border-c-border bg-c-surface px-4 text-sm font-bold text-c-text transition hover:not-disabled:bg-c-elevated disabled:cursor-not-allowed disabled:opacity-50"
         >2×</button>
       </div>
     </div>
 
-    <!-- Mine count -->
+    <!-- Mine count selector -->
     <div>
       <label class="mb-1 block text-xs font-semibold uppercase tracking-widest text-c-text-muted">
         Mines
@@ -154,6 +157,7 @@
       <div class="grid grid-cols-4 gap-1">
         {#each mineOptions as opt}
           <button
+            type="button"
             disabled={phase === 'playing'}
             onclick={() => (mineCount = opt)}
             class={twMerge(
@@ -167,7 +171,7 @@
       </div>
     </div>
 
-    <!-- Live multiplier during play -->
+    <!-- Live multiplier -->
     {#if phase === 'playing' && safeCount > 0}
       <div class="rounded-lg border border-c-border/50 bg-c-input p-3 text-center">
         <p class="text-xs font-semibold uppercase tracking-widest text-c-text-muted">Current</p>
@@ -178,13 +182,19 @@
 
     <!-- Action buttons -->
     {#if phase === 'idle'}
-      <button onclick={startGame} disabled={isBetInvalid}
-        class="touch-manipulation rounded-lg py-3 font-semibold text-white shadow-md transition-all bg-green-600 hover:bg-green-500 active:bg-green-700 disabled:bg-c-surface disabled:text-c-text-muted disabled:shadow-none"
+      <button
+        type="button"
+        onclick={startGame}
+        disabled={isBetInvalid}
+        class="touch-manipulation rounded-lg py-3 font-semibold text-white shadow-md transition-all bg-green-600 hover:bg-green-500 active:bg-green-700 disabled:cursor-not-allowed disabled:bg-c-surface disabled:text-c-text-muted disabled:shadow-none"
       >Bet</button>
 
     {:else if phase === 'playing'}
-      <button onclick={cashOut} disabled={safeCount === 0}
-        class="touch-manipulation rounded-lg py-3 font-semibold text-gray-900 shadow-md transition-all bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 disabled:bg-c-surface disabled:text-c-text-muted disabled:shadow-none"
+      <button
+        type="button"
+        onclick={cashOut}
+        disabled={safeCount === 0}
+        class="touch-manipulation rounded-lg py-3 font-semibold text-gray-900 shadow-md transition-all bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 disabled:cursor-not-allowed disabled:bg-c-surface disabled:text-c-text-muted disabled:shadow-none"
       >
         {safeCount === 0 ? 'Pick a tile first' : `Cash Out  $${(localBet * mult).toFixed(2)}`}
       </button>
@@ -194,19 +204,21 @@
         'rounded-lg border py-3 text-center',
         phase === 'won' ? 'border-green-800/50 bg-green-950/50' : 'border-red-800/50 bg-red-950/50',
       )}>
-        <p class={twMerge('text-xs', phase === 'won' ? 'text-green-400' : 'text-red-400')}>
+        <p class={phase === 'won' ? 'text-xs text-green-400' : 'text-xs text-red-400'}>
           {phase === 'won' ? `Won at ${mult.toFixed(2)}×` : 'Mine hit!'}
         </p>
         <p class="mt-0.5 text-lg font-bold text-white">
           {phase === 'won' ? `+$${(localBet * mult).toFixed(2)}` : `-$${localBet.toFixed(2)}`}
         </p>
       </div>
-      <button onclick={reset}
+      <button
+        type="button"
+        onclick={reset}
         class="touch-manipulation rounded-lg border border-c-border py-3 font-semibold text-white transition-all bg-c-surface hover:bg-c-elevated"
       >New Round</button>
     {/if}
 
-    <!-- Stats -->
+    <!-- Stats footer -->
     <div class="mt-auto rounded-lg border border-c-border/50 bg-c-input px-3 py-2 text-xs text-c-text-muted">
       <div class="flex justify-between">
         <span>Mines</span><span class="text-white">{mineCount} / {TOTAL}</span>
@@ -223,22 +235,21 @@
     </div>
   </div>
 
-  <!-- ── Grid area ───────────────────────────────────────────────────────── -->
-  <div class="relative flex min-h-[400px] flex-1 items-center justify-center bg-c-bg p-6">
-    <div class="grid w-full max-w-[520px] grid-cols-5 gap-2" style="aspect-ratio: 1">
+  <!-- Grid area -->
+  <div class="flex min-h-[400px] flex-1 items-center justify-center bg-c-bg p-6">
+    <!-- Fixed 5×5 grid: 5 tiles × 72px + 4 gaps × 8px = 392px -->
+    <div class="grid grid-cols-5 gap-2" style="width: 392px;">
       {#each tiles as tile, i}
         <button
+          type="button"
           onclick={() => reveal(i)}
           disabled={tile !== 'hidden' || phase !== 'playing'}
           class={twMerge(
-            'flex items-center justify-center rounded-lg text-2xl font-bold transition-all',
-            tileClass(i, tile),
+            'flex items-center justify-center rounded-lg border text-2xl transition-all select-none',
+            'w-[72px] h-[72px]',
+            tileStyle(i, tile),
           )}
-        >
-          {#if tile === 'safe'}💎
-          {:else if tile === 'mine'}💣
-          {/if}
-        </button>
+        >{tileLabel(tile)}</button>
       {/each}
     </div>
   </div>

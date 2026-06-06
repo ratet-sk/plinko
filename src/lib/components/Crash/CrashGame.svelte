@@ -25,8 +25,12 @@
   function generateCrashPoint(): number {
     if (isCheatKeyHeld) return 9 + Math.random() * 16; // 9–25×
     const r = Math.random();
-    if (r < 0.01) return 1.0; // 1% instant bust
-    return Math.max(1.01, 0.99 / r);   // exponential-ish distribution
+    // 6% instant bust at 1×
+    if (r < 0.06) return 1.0;
+    // Skew heavily toward low multipliers using r^(5/3):
+    // P(crash < 1.5×) ≈ 55%  |  P(crash < 2×) ≈ 72%  |  P(crash < 4×) ≈ 88%
+    const skewed = Math.pow(r, 1.67);
+    return Math.max(1.01, Math.min(20, 0.96 / skewed));
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -58,7 +62,7 @@
     const timeScale = isCheatKeyHeld ? 0.2 : 1;
     gameTime += dt * timeScale;
 
-    const m = Math.exp(0.18 * gameTime);
+    const m = Math.exp(0.42 * gameTime);
     multiplier = Math.round(m * 100) / 100;
 
     if (now - lastSample >= 50) {
