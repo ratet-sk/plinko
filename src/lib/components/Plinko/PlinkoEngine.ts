@@ -294,14 +294,15 @@ class PlinkoEngine {
         ...records,
         {
           id: uuidv4(),
+          gameId: 'plinko',
           betAmount,
-          rowCount: this.rowCount,
-          binIndex,
-          payout: {
-            multiplier,
-            value: payoutValue,
-          },
+          multiplier,
+          payout: payoutValue,
           profit,
+          details: {
+            rowCount: this.rowCount,
+            binIndex,
+          },
         },
       ]);
       totalProfitHistory.update((history) => {

@@ -1,6 +1,7 @@
 import PlinkoEngine from '$lib/components/Plinko/PlinkoEngine';
-import { binColor, DEFAULT_BALANCE } from '$lib/constants/game';
+import { binColor, CURRENCIES, DEFAULT_BALANCE } from '$lib/constants/game';
 import {
+  Currency,
   RiskLevel,
   type BetAmountOfExistingBalls,
   type RowCount,
@@ -8,7 +9,7 @@ import {
 } from '$lib/types';
 import { interpolateRgbColors } from '$lib/utils/colors';
 import { countValueOccurrences } from '$lib/utils/numbers';
-import { derived, writable } from 'svelte/store';
+import { derived, writable, get } from 'svelte/store';
 
 export const plinkoEngine = writable<PlinkoEngine | null>(null);
 
@@ -31,13 +32,35 @@ export const winRecords = writable<WinRecord[]>([]);
 export const totalProfitHistory = writable<number[]>([0]);
 
 /**
- * Game balance, which is saved to local storage.
- *
- * We only save the balance to local storage on browser `beforeunload` event instead of
- * on every balance change. This prevents unnecessary writes to local storage, which can
- * be slow on low-end devices.
+ * Currently selected currency.
+ */
+export const selectedCurrency = writable<Currency>(Currency.USD);
+
+/**
+ * Balances for all currencies.
+ */
+export const balances = writable<Record<Currency, number>>({
+  [Currency.BTC]: 0,
+  [Currency.ETH]: 0,
+  [Currency.LTC]: 0,
+  [Currency.USD]: DEFAULT_BALANCE,
+});
+
+/**
+ * Game balance for the selected currency.
  */
 export const balance = writable<number>(DEFAULT_BALANCE);
+
+// Sync balance with balances when currency changes or when balance is updated
+selectedCurrency.subscribe((currency) => {
+  const currentBalances = get(balances);
+  balance.set(currentBalances[currency] || 0);
+});
+
+balance.subscribe((val) => {
+  const currency = get(selectedCurrency);
+  balances.update((prev) => ({ ...prev, [currency]: val }));
+});
 
 /**
  * RGB colors for every bin. The length of the array is the number of bins.

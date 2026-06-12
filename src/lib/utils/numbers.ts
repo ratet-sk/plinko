@@ -1,4 +1,7 @@
-import type { RowCount } from '$lib/types';
+import type { RowCount, Currency } from '$lib/types';
+import { CURRENCIES } from '$lib/constants/game';
+import { get } from 'svelte/store';
+import { selectedCurrency as selectedCurrencyStore } from '$lib/stores/game';
 
 /**
  * Calculate the probabilities of a ball falling into each bin (from left to right).
@@ -80,17 +83,28 @@ export function factorial(n: number): number {
 
 /**
  * @example
- * formatCurrency(123456.789); // "$123,456.79"
+ * formatCurrency(123456.789); // "₿ 0.12345679" or "$123,456.79"
  * formatCurrency(2); // "$2.00"
- * formatCurrency(-2); // "-$2.00"
  */
-export function formatCurrency(value: number): string {
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    style: 'currency',
-    currency: 'USD',
+export function formatCurrency(value: number, currency?: Currency): string {
+  const currentCurrency = currency || get(selectedCurrencyStore);
+  const metadata = CURRENCIES[currentCurrency];
+
+  if (currentCurrency === 'USD') {
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: metadata.decimals,
+      maximumFractionDigits: metadata.decimals,
+      style: 'currency',
+      currency: 'USD',
+    });
+  }
+
+  const formattedValue = value.toLocaleString('en-US', {
+    minimumFractionDigits: metadata.decimals,
+    maximumFractionDigits: metadata.decimals,
   });
+
+  return `${metadata.symbol} ${formattedValue}`;
 }
 
 /**

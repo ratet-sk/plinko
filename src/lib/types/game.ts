@@ -6,6 +6,20 @@ export enum BetMode {
   AUTO = 'AUTO',
 }
 
+export enum Currency {
+  BTC = 'BTC',
+  ETH = 'ETH',
+  LTC = 'LTC',
+  USD = 'USD',
+}
+
+export interface CurrencyMetadata {
+  symbol: string;
+  label: string;
+  decimals: number;
+  iconColor: string;
+}
+
 /**
  * Game's risk level, which controls the volatility of payout.
  */
@@ -31,29 +45,33 @@ export type WinRecord = {
    */
   id: string;
   /**
+   * Which game this record belongs to.
+   */
+  gameId: 'plinko' | 'crash' | 'mines';
+  /**
    * How much the player has bet.
    */
   betAmount: number;
   /**
-   * Number of pin rows at the time of winning.
+   * Payout multiplier.
    */
-  rowCount: RowCount;
+  multiplier: number;
   /**
-   * Zero-based index of which bin the ball fell into (leftmost bin is 0).
+   * Actual payout amount.
    */
-  binIndex: number;
-  payout: {
-    /**
-     * Multiplier for the payout (e.g. `0.3`, `1.5`).
-     */
-    multiplier: number;
-    /**
-     * Actual payout amount.
-     */
-    value: number;
-  };
+  payout: number;
   /**
    * Payout value minus the bet amount.
    */
   profit: number;
+  /**
+   * Game-specific data.
+   */
+  details?: {
+    rowCount?: RowCount;
+    binIndex?: number;
+    mineCount?: number;
+    safeCount?: number;
+    crashPoint?: number;
+  };
 };

@@ -1,11 +1,40 @@
-import { RiskLevel } from '$lib/types';
+import { Currency, RiskLevel, type CurrencyMetadata } from '$lib/types';
 import { getBinColors } from '$lib/utils/colors';
 import { computeBinProbabilities } from '$lib/utils/numbers';
 
-export const DEFAULT_BALANCE = 200;
+export const DEFAULT_BALANCE = 1000;
+
+export const CURRENCIES: Record<Currency, CurrencyMetadata> = {
+  [Currency.BTC]: {
+    symbol: '₿',
+    label: 'Bitcoin',
+    decimals: 8,
+    iconColor: '#F7931A',
+  },
+  [Currency.ETH]: {
+    symbol: 'Ξ',
+    label: 'Ethereum',
+    decimals: 6,
+    iconColor: '#627EEA',
+  },
+  [Currency.LTC]: {
+    symbol: 'Ł',
+    label: 'Litecoin',
+    decimals: 5,
+    iconColor: '#345D9D',
+  },
+  [Currency.USD]: {
+    symbol: '$',
+    label: 'USD',
+    decimals: 2,
+    iconColor: '#22c55e',
+  },
+};
 
 export const LOCAL_STORAGE_KEY = {
   BALANCE: 'plinko_balance',
+  CURRENCY: 'plinko_currency',
+  BALANCES: 'plinko_balances',
   SETTINGS: {
     ANIMATION: 'plinko_settings_animation',
   },
